@@ -135,7 +135,7 @@ namespace PacmanGame
                 {
                     RenderPacMan(position);
                 }
-                */
+                
 
                 if (Dots[position.X, position.Y] == '.')
                 {
