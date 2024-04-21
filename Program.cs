@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace PacmanGame
 {
@@ -36,121 +37,11 @@ namespace PacmanGame
 
         public class PacMan
         {
-            public void RenderPacMan((int X, int Y) position)
-            {
-                Console.SetCursorPosition(position.X, position.Y);
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write('C');
-                Console.ForegroundColor = ConsoleColor.White;
-            }
 
-            public bool AbleToMove((int X, int Y) position, char[,] Walls, int moveDirection)
-            {
-                
-                if(moveDirection == (int)Direction.Up)
-                {
-                    if (Walls[position.X, --position.Y] == ' ')
-                        return true;
-                    else
-                        return false;
-                }
-                else if (moveDirection == (int)Direction.Down)
-                {
-                    if (Walls[position.X, ++position.Y] == ' ')
-                        return true;
-                    else
-                        return false;
-                }
-                else if (moveDirection == (int)Direction.Left)
-                {
-                    if (Walls[position.X - 1, position.Y] == ' ')
-                        return true;
-                    else
-                        return false;
-                }
-                else if (moveDirection == (int)Direction.Right)
-                {
-                    if (Walls[position.X + 1, position.Y] == ' ')
-                        return true;
-                    else
-                        return false;
-                }
-                else
-                    return false;  
-            }
-
-            public void UpdatePacMan((int X, int Y) position, char[,] Dots, int moveDirection, out int scoreAdd, char[,] Walls)
-            {
-                if (moveDirection == (int)Direction.Up)
-                {
-                        position.Y--;
-                        RenderPacMan(position);
-                }
-                else if (moveDirection == (int)Direction.Down)
-                {
-                    if (Walls[position.X, position.Y + 1] == ' ')
-                    {
-                        //Console.Write(' ');
-                        //Console.SetCursorPosition(position.X, position.Y + 1);
-                        position.Y++;
-                        RenderPacMan(position);
-                    }
-                    else
-                    {
-                        position.Y++;
-                        RenderPacMan(position);
-                    }
-                }
-                else if (moveDirection == (int)Direction.Left)
-                {
-                    if (Walls[position.X - 1, position.Y] == ' ')
-                    {
-                        //Console.Write(' ');
-                        //Console.SetCursorPosition(position.X - 1, position.Y);
-                        position.X--;
-                        RenderPacMan(position);
-                    }
-                    else
-                    {
-                        position.X--;
-                        RenderPacMan(position);
-                    }
-                }
-                else if (moveDirection == (int)Direction.Right)
-                {
-                    if (Walls[position.X + 1, position.Y] == ' ')
-                    {
-                        //Console.Write(' ');
-                        //Console.SetCursorPosition(position.X + 1, position.Y);
-                        position.X++;
-                        RenderPacMan(position);
-                    }
-                    else
-                    {
-                        position.X++;
-                        RenderPacMan(position);
-                    }
-                }
-                else
-                {
-                    RenderPacMan(position);
-                }
-                
-
-                if (Dots[position.X, position.Y] == '.')
-                {
-                    scoreAdd = 1;
-                }
-                else
-                    scoreAdd = 0;
-            }
-            public void Debug((int X, int Y) position, int score)
-            {
-                Console.SetCursorPosition(0, 45);
-                Console.Write(position);
-                Console.Write(" score:" + score);
-            }
         }
+
+
+
 
         public class Walls
         {
@@ -338,10 +229,14 @@ namespace PacmanGame
             Walls walls = new Walls();
 
             int score = 0;
-            int PacManDirection = 1;
+            Direction? pacManDirection = default;
+            int pacManFrame = 0;
+            const int framesToHorizontal = 6;
+            const int framesToVertical = 6;
             (int X, int Y) pacManPosition;
 
             char[,] GhostWalls = new char[42, 42];
+            int dotsCollected = 0;
             int x = 0, y = 0;
             foreach (char c in GhostWallsString)
             {
@@ -357,113 +252,273 @@ namespace PacmanGame
                     x++;
                 }
             }
-            
-            pacManPosition = (20, 13);
+
             char[,] dotsMap = new char[42, 42];
+
+            pacManPosition = (20, 13);
             dotsMap = walls.countDots(DotsString);
             walls.RenderWalls(WallsString);
             walls.RenderDots(DotsString);
+            FirstDirectionInput();
 
             while (true)
             {
+                if (dotsCollected >= 168)
+                {
+                    dotsCollected = 0;
+                    dotsMap = walls.countDots(DotsString);
+                    walls.RenderWalls(WallsString);
+                    walls.RenderDots(DotsString);
+                    pacManPosition = (20, 13);
+                    FirstDirectionInput();
+                }
 
-                //pacManPosition = (pacManPosition.X + 1, pacManPosition.Y);
+                Thread.Sleep(40);
+                    HandleInput();
+                    UpdatePacMan();
+                    RenderPacMan();
 
-                //pacMan.RenderPacMan(pacManPosition);
+                Debug();
+                /*
+            ConsoleKeyInfo keyInfo = Console.ReadKey();
 
-                ConsoleKeyInfo keyInfo = Console.ReadKey();
-                
-                if (keyInfo.Key == ConsoleKey.LeftArrow && pacManPosition.X == 0 || keyInfo.Key == ConsoleKey.A && pacManPosition.X == 0)
+            if (keyInfo.Key == ConsoleKey.LeftArrow && pacManPosition.X == 0 || keyInfo.Key == ConsoleKey.A && pacManPosition.X == 0)
+            {
+                PacManDirection = (int)Direction.Left;
+                Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                Console.Write(' ');
+                pacManPosition.X = 40;
+                pacMan.RenderPacMan(pacManPosition);
+            }
+            else if (keyInfo.Key == ConsoleKey.RightArrow && pacManPosition.X == 40 || keyInfo.Key == ConsoleKey.D && pacManPosition.X == 40)
+            {
+                PacManDirection = (int)Direction.Right;
+                Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                Console.Write(' ');
+                pacManPosition.X = 0;
+                pacMan.RenderPacMan(pacManPosition);
+            }
+            else if (keyInfo.Key == ConsoleKey.UpArrow || keyInfo.Key == ConsoleKey.W)
+            {
+                if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Up) == true)
+                {
+                    PacManDirection = (int)Direction.Up;
+                    Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                    Console.Write(' ');
+                    pacManPosition = (pacManPosition.X, pacManPosition.Y - 1);
+                    pacMan.RenderPacMan(pacManPosition);
+                    if (walls.dotEaten(dotsMap, pacManPosition) == true)
+                    {
+                        dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                        score++;
+                    }
+                }
+            }
+            else if (keyInfo.Key == ConsoleKey.DownArrow || keyInfo.Key == ConsoleKey.S)
+            {
+                if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Down) == true)
+                {
+                    PacManDirection = (int)Direction.Down;
+                    Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                    Console.Write(' ');
+                    pacManPosition = (pacManPosition.X, pacManPosition.Y + 1);
+                    pacMan.RenderPacMan(pacManPosition);
+                    if (walls.dotEaten(dotsMap, pacManPosition) == true)
+                    {
+                        dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                        score++;
+                    }
+                }
+            }
+            else if (keyInfo.Key == ConsoleKey.LeftArrow || keyInfo.Key == ConsoleKey.A)
+            {
+                if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Left) == true)
                 {
                     PacManDirection = (int)Direction.Left;
                     Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
                     Console.Write(' ');
-                    pacManPosition.X = 40;
+                    pacManPosition = (pacManPosition.X - 1, pacManPosition.Y);
                     pacMan.RenderPacMan(pacManPosition);
+                    if (walls.dotEaten(dotsMap, pacManPosition) == true)
+                    {
+                        dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                        score++;
+                    }
                 }
-                else if (keyInfo.Key == ConsoleKey.RightArrow && pacManPosition.X == 40 || keyInfo.Key == ConsoleKey.D && pacManPosition.X == 40)
+            }
+            else if (keyInfo.Key == ConsoleKey.RightArrow || keyInfo.Key == ConsoleKey.D)
+            {
+                if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Right) == true)
                 {
                     PacManDirection = (int)Direction.Right;
                     Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
                     Console.Write(' ');
-                    pacManPosition.X = 0;
+                    pacManPosition = (pacManPosition.X + 1, pacManPosition.Y);
                     pacMan.RenderPacMan(pacManPosition);
-                }
-                else if (keyInfo.Key == ConsoleKey.UpArrow || keyInfo.Key == ConsoleKey.W)
-                {
-                    if(pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Up) == true)
+                    if (walls.dotEaten(dotsMap, pacManPosition) == true)
                     {
-                        PacManDirection = (int)Direction.Up;
-                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                        Console.Write(' ');
-                        pacManPosition = (pacManPosition.X, pacManPosition.Y-1);
-                        pacMan.RenderPacMan(pacManPosition);
-                        if (walls.dotEaten(dotsMap, pacManPosition) == true)
-                        {
-                            dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
-                            score++;
-                        }
-                    }                   
-                }
-                else if (keyInfo.Key == ConsoleKey.DownArrow || keyInfo.Key == ConsoleKey.S)
-                {
-                    if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Down) == true)
-                    {
-                        PacManDirection = (int)Direction.Down;
-                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                        Console.Write(' ');
-                        pacManPosition = (pacManPosition.X, pacManPosition.Y+1);
-                        pacMan.RenderPacMan(pacManPosition);
-                        if (walls.dotEaten(dotsMap, pacManPosition) == true)
-                        {
-                            dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
-                            score++;
-                        }
+                        dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                        score++;
                     }
                 }
-                else if (keyInfo.Key == ConsoleKey.LeftArrow || keyInfo.Key == ConsoleKey.A)
-                {
-                    if (pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Left) == true)
-                    {
-                        PacManDirection = (int)Direction.Left;
-                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                        Console.Write(' ');
-                        pacManPosition = (pacManPosition.X-1, pacManPosition.Y);
-                        pacMan.RenderPacMan(pacManPosition);
-                        if (walls.dotEaten(dotsMap, pacManPosition) == true)
-                        {
-                            dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
-                            score++;
-                        }
-                    }
-                }
-                else if (keyInfo.Key == ConsoleKey.RightArrow || keyInfo.Key == ConsoleKey.D)
-                {
-                    if(pacMan.AbleToMove(pacManPosition, GhostWalls, (int)Direction.Right) == true)
-                    {
-                        PacManDirection = (int)Direction.Right;
-                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                        Console.Write(' ');
-                        pacManPosition = (pacManPosition.X+1, pacManPosition.Y);
-                        pacMan.RenderPacMan(pacManPosition);
-                        if (walls.dotEaten(dotsMap, pacManPosition) == true)
-                        {
-                            dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
-                            score++;
-                        }
-                    }
-                }
-                
+            }
+        }
+        else
+        {
+            pacManFrame--;
+        }*/
                 //pacMan.UpdatePacMan(pacManPosition, Dots, PacManDirection, out int scoreAdd, GhostWalls);
                 //score += scoreAdd;
 
-                pacMan.Debug(pacManPosition, score);
+
                 //Console.WriteLine(score);
+            }
+            bool FirstDirectionInput()
+            {
+            GetInput:
+                ConsoleKey key = Console.ReadKey(true).Key;
+                switch (key)
+                {
+                    case ConsoleKey.LeftArrow: pacManDirection = Direction.Left; break;
+                    case ConsoleKey.RightArrow: pacManDirection = Direction.Right; break;
+                    default: goto GetInput;
+                }
+                return false;
+            }
+
+            bool HandleInput()
+            {
+                bool moved = false;
+                void TrySetPacManDirection(Direction direction)
+                {
+                    if (moved == false && pacManDirection != direction)
+                    {
+                        pacManDirection = direction;
+                        pacManFrame = 0;
+                        moved = true;
+                    }
+                }
+                while (Console.KeyAvailable)
+                {
+                    switch (Console.ReadKey(true).Key)
+                    {
+                        case ConsoleKey.UpArrow: TrySetPacManDirection(Direction.Up); break;
+                        case ConsoleKey.DownArrow: TrySetPacManDirection(Direction.Down); break;
+                        case ConsoleKey.LeftArrow: TrySetPacManDirection(Direction.Left); break;
+                        case ConsoleKey.RightArrow: TrySetPacManDirection(Direction.Right); break;
+                    }
+                    return false;
+                }
+                return false;
+            }
+
+            void RenderPacMan()
+            {
+                Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write('C');
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            bool AbleToMove(int xc, int yc, Direction direction, char[,] Walls)
+            {
+                switch (direction)
+                {
+                    case Direction.Up:
+                        if (Walls[xc, yc - 1] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    case Direction.Down:
+                        if (Walls[xc, yc + 1] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    case Direction.Left:
+                        if (Walls[xc - 1, yc] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    case Direction.Right:
+                        if (Walls[xc + 1, yc] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+
+            void UpdatePacMan()
+            {
+                if (pacManDirection.HasValue)
+                {
+                    if ((pacManDirection == Direction.Left || pacManDirection == Direction.Right) && pacManFrame >= framesToHorizontal ||
+                             (pacManDirection == Direction.Up || pacManDirection == Direction.Down) && pacManFrame >= framesToVertical)
+                    {
+                        if (AbleToMove(pacManPosition.X, pacManPosition.Y, pacManDirection.Value, GhostWalls) == true)
+                        {
+                            pacManFrame = 0;
+                            Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                            Console.Write(' ');
+                            switch (pacManDirection)
+                            {
+                                case Direction.Up:
+                                    pacManPosition.Y--;
+                                    break;
+                                case Direction.Down:
+                                    pacManPosition.Y++;
+                                    break;
+                                case Direction.Left:
+                                    pacManPosition.X--;
+                                    break;
+                                case Direction.Right:
+                                    pacManPosition.X++;
+                                    break;
+                            }
+                            if (pacManPosition.X <= 0)
+                            {
+                                pacManPosition.X = 40;
+                            }
+                            else if (pacManPosition.X >= 40)
+                            {
+                                pacManPosition.X = 0;
+                            }
+                            if (walls.dotEaten(dotsMap, pacManPosition) == true)
+                            {
+                                dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                                dotsCollected += 1;
+                                score += 1;
+                            }
+                        }
+                        else
+                        {
+                            pacManDirection = null;
+                        }
+                    }
+                    else
+                    {
+                        pacManFrame++;
+                    }
+                }
+            }
+
+            void Debug()
+            {
+                Console.SetCursorPosition(0, 24);
+                Console.Write("                                       ");
+                Console.SetCursorPosition(0, 24);
+                Console.Write(pacManPosition);
+                Console.SetCursorPosition(9, 24);
+                Console.Write(" score:" + score);
+                Console.SetCursorPosition(20, 24);
+                Console.Write(pacManDirection);
             }
 
         }
-
-        
     }
-
 }
