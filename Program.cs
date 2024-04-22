@@ -45,92 +45,22 @@ namespace PacmanGame
 
         public class Walls
         {
-            public void RenderWalls(string map)
-            {
-                Console.SetCursorPosition(0, 0);
-                int x = Console.CursorLeft;
-                int y = Console.CursorTop;
-                foreach (char c in map)
-                {
-                    if (c is '\n')
-                    {
-                        Console.WriteLine();
-
-                        Console.SetCursorPosition(x, ++y);
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Blue;
-                        Console.Write(c);
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-
-                }
-            }
-
-            public void RenderDots(string map)
-            {
-                Console.SetCursorPosition(0, 0);
-                int x = Console.CursorLeft;
-                int y = Console.CursorTop;
-                foreach (char c in map)
-                {
-                    if (c == '\n')
-                    {
-                        Console.SetCursorPosition(x, ++y);
-                    }
-                    else if (c == ' ')
-                    {
-                        Console.CursorLeft++;
-                    }
-                    else if (c == '.')
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.Write(c);
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-                    else if (c == '+')
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.Write(c);
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-                }
-            }
-
-            public char[,] countDots(string DotsString)
-            {
-                int x = 0;
-                int y = 0;
-                char[,] countDots = new char[42, 42];
-                foreach (char c in DotsString)
-                {
-                    if (c == '\n')
-                    {
-                        y++;
-                        x = 0;
-                    }
-                    else
-                    {
-                        countDots[x, y] = c;
-                        x++;
-                    }
-                }
-                return countDots;
-            }
-
-            public bool dotEaten(char[,] Dots, (int X, int Y) position)
-            {
-                if (Dots[position.X, position.Y] == '.')
-                {
-                    return true;
-                }
-                else
-                    return false;
-            }
-
+            
         }
 
+        class Ghost
+        {
+            public (int X, int Y) StartingPosition;
+            public (int X, int Y) Position;
+            public bool Weak;
+            public int WeakTime;
+            public ConsoleColor Color;
+            //public Action? Update;
+            public int Start;
+            public int UpdateFrame;
+            public int FramesToUpdate;
+            public (int X, int Y)? Destination;
+        }
 
         enum Direction
         {
@@ -152,7 +82,7 @@ namespace PacmanGame
 "║█       █║█       █║█       █║█       █║\n" +
 "╚═════╗█ █╠══════█ █║█ █══════╣█ █╔═════╝\n" +
 "██████║█ █║█                 █║█ █║██████\n" +
-"══════╝█ █║█ █╔════█ █════╗█ █║█ █╚══════\n" +
+"══════╝█ █║█ █╔════███════╗█ █║█ █╚══════\n" +
 "             █║█         █║█             \n" +
 "══════╗█ █║█ █║███████████║█ █║█ █╔══════\n" +
 "██████║█ █║█ █╚═══════════╝█ █║█ █║██████\n" +
@@ -210,7 +140,7 @@ namespace PacmanGame
 "        .                       .        \n" +
 "  . . . . . . . . .   . . . . . . . . .  \n" +
 "  .     .         .   .         .     .  \n" +
-"  + .   . . . . . .   . . . . . .   . +  \n" +
+"  + .   . . . . . . . . . . . . .   . +  \n" +
 "    .   .   .               .   .   .    \n" +
 "  . . . .   . . . .   . . . .   . . . .  \n" +
 "  .               .   .               .  \n" +
@@ -228,6 +158,7 @@ namespace PacmanGame
             PacMan pacMan = new PacMan();
             Walls walls = new Walls();
 
+            Random rnd = new Random();
             int score = 0;
             Direction? pacManDirection = default;
             int pacManFrame = 0;
@@ -238,27 +169,40 @@ namespace PacmanGame
             char[,] GhostWalls = new char[42, 42];
             int dotsCollected = 0;
             int x = 0, y = 0;
-            foreach (char c in GhostWallsString)
+            foreach (char ch in GhostWallsString)
             {
-                if (c == '\n')
+                if (ch == '\n')
                 {
-                    GhostWalls[x, y] = c;
+                    GhostWalls[x, y] = ch;
                     y++;
                     x = 0;
                 }
                 else
                 {
-                    GhostWalls[x, y] = c;
+                    GhostWalls[x, y] = ch;
                     x++;
                 }
             }
 
             char[,] dotsMap = new char[42, 42];
+            char[,] countDots = new char[42, 42];
+
+            Ghost a = new Ghost();
+            Ghost b = new Ghost();
+            Ghost c = new Ghost();
+            Ghost d = new Ghost();
+
+            a.Color = ConsoleColor.Red;
+            a.StartingPosition = (20, 10);
+            a.Position = a.StartingPosition;
+            a.Start = 3;
+            a.UpdateFrame = -30;
+            a.FramesToUpdate = 6;
 
             pacManPosition = (20, 13);
-            dotsMap = walls.countDots(DotsString);
-            walls.RenderWalls(WallsString);
-            walls.RenderDots(DotsString);
+            countDotsCall();
+            RenderWalls();
+            RenderDots();
             FirstDirectionInput();
 
             while (true)
@@ -266,17 +210,21 @@ namespace PacmanGame
                 if (dotsCollected >= 168)
                 {
                     dotsCollected = 0;
-                    dotsMap = walls.countDots(DotsString);
-                    walls.RenderWalls(WallsString);
-                    walls.RenderDots(DotsString);
+                    countDotsCall();
+                    RenderWalls();
+                    RenderDots();
                     pacManPosition = (20, 13);
                     FirstDirectionInput();
                 }
 
                 Thread.Sleep(40);
-                    HandleInput();
-                    UpdatePacMan();
-                    RenderPacMan();
+                //RenderDots();
+                HandleInput();
+                UpdatePacMan();
+                RenderPacMan();
+                UpdateGhost();
+                RenderGhost();
+
 
                 Debug();
                 /*
@@ -488,9 +436,9 @@ namespace PacmanGame
                             {
                                 pacManPosition.X = 0;
                             }
-                            if (walls.dotEaten(dotsMap, pacManPosition) == true)
+                            if (dotEaten() == true)
                             {
-                                dotsMap[pacManPosition.X, pacManPosition.Y] = ' ';
+                                countDots[pacManPosition.X, pacManPosition.Y] = ' ';
                                 dotsCollected += 1;
                                 score += 1;
                             }
@@ -507,8 +455,120 @@ namespace PacmanGame
                 }
             }
 
+            void UpdateGhost()
+            {
+                Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                if (countDots[a.Position.X, a.Position.Y] != ' ')
+                {
+                    Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                    Console.Write(countDots[a.Position.X, a.Position.Y]);
+                }
+                else 
+                {
+                    Console.Write(" ");
+                } 
+
+                if (a.Start > 1)
+                {
+                    if (a.UpdateFrame >= a.FramesToUpdate)
+                    {
+                        switch (a.Start)
+                        {
+                            case 3:
+                                a.Position = (20, 9);
+                                a.Start--;
+                                break;
+                            case 2:
+                                a.Position = (20, 8);
+                                a.Start--;
+                                break;
+                        }
+                        a.UpdateFrame = 0;
+                    }
+                    else
+                    {
+                        a.UpdateFrame++;
+                    }
+                }
+                else
+                {
+                    a.Destination = (pacManPosition.X, pacManPosition.Y);
+                    if (a.UpdateFrame >= a.FramesToUpdate)
+                    {
+                        a.UpdateFrame = 0;
+                        if (a.Destination.HasValue)
+                        {
+                            if (a.Position.X < a.Destination.Value.X && (AbleToMove(a.Position.X, a.Position.Y, Direction.Right, GhostWalls) == true))
+                            {
+                                a.Position.X++;
+                            }
+                            else if (a.Position.X > a.Destination.Value.X && (AbleToMove(a.Position.X, a.Position.Y, Direction.Left, GhostWalls) == true))
+                            {
+                                a.Position.X--;
+                            }
+                            else if (a.Position.Y < a.Destination.Value.Y && (AbleToMove(a.Position.X, a.Position.Y, Direction.Down, GhostWalls) == true))
+                            {
+                                a.Position.Y++;
+                            }
+                            else if (a.Position.Y > a.Destination.Value.Y && (AbleToMove(a.Position.X, a.Position.Y, Direction.Up, GhostWalls) == true))
+                            {
+                                a.Position.Y--;
+                            }
+                            else
+                            {
+                                int i = rnd.Next(0, 4);
+                                switch (i)
+                                {
+                                    case 0:
+                                        if (AbleToMove(a.Position.X, a.Position.Y, Direction.Up, GhostWalls) == true)
+                                        {
+                                            a.Position.Y--;
+                                        }
+                                        break;
+                                    case 1:
+                                        if (AbleToMove(a.Position.X, a.Position.Y, Direction.Down, GhostWalls) == true)
+                                        {
+                                            a.Position.Y++;
+                                        }
+                                        break;
+                                    case 2:
+                                        if (AbleToMove(a.Position.X, a.Position.Y, Direction.Left, GhostWalls) == true)
+                                        {
+                                            a.Position.X--;
+                                        }
+                                        break;
+                                    case 3:
+                                        if (AbleToMove(a.Position.X, a.Position.Y, Direction.Right, GhostWalls) == true)
+                                        {
+                                            a.Position.X++;
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            a.Destination = (pacManPosition.X, pacManPosition.Y);
+                        }
+                    }
+                    else
+                    {
+                        a.UpdateFrame++;
+                    }
+                }
+            }
+
+            void RenderGhost()
+            {
+                Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                Console.ForegroundColor = a.Color;
+                Console.Write('A');
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
             void Debug()
             {
+                //Pacman
                 Console.SetCursorPosition(0, 24);
                 Console.Write("                                       ");
                 Console.SetCursorPosition(0, 24);
@@ -517,6 +577,100 @@ namespace PacmanGame
                 Console.Write(" score:" + score);
                 Console.SetCursorPosition(20, 24);
                 Console.Write(pacManDirection);
+
+                //Ghost A
+                Console.SetCursorPosition(0, 25);
+                Console.Write("                                       ");
+                Console.SetCursorPosition(0, 25);
+                Console.Write(a.Destination);
+            }
+
+            void RenderWalls()
+            {
+                Console.SetCursorPosition(0, 0);
+                x = Console.CursorLeft;
+                y = Console.CursorTop;
+                foreach (char ca in WallsString)
+                {
+                    if (ca is '\n')
+                    {
+                        Console.WriteLine();
+
+                        Console.SetCursorPosition(x, ++y);
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Blue;
+                        Console.Write(ca);
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+
+                }
+            }
+
+            void RenderDots()
+            {
+                Console.SetCursorPosition(0, 0);
+                x = 0;
+                y = 0;
+                for (y = 0; y < 42; y++)
+                {
+                    for (x = 0; x < 42; x++)
+                    {
+                        char ch = countDots[x, y];
+                        if (ch == ' ')
+                        {
+                            Console.CursorLeft++;
+                        }
+                        else if (ch == '.')
+                        {
+                            Console.SetCursorPosition(x, y);
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.Write(ch);
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        else if (ch == '+')
+                        {
+                            Console.SetCursorPosition(x, y);
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.Write(ch);
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+
+                    }
+                    Console.WriteLine();
+                }
+            }
+
+            void countDotsCall()
+            {
+                x = 0;
+                y = 0;
+                
+                foreach(char ch in DotsString)
+                {
+                    if (ch == '\n')
+                    {
+                        countDots[x, y] = ch;
+                        y ++;
+                        x = 0;
+                    }
+                    else
+                    {
+                        countDots[x, y] = ch;
+                        x++;
+                    }
+                }
+            }
+
+            bool dotEaten()
+            {
+                if (countDots[pacManPosition.X, pacManPosition.Y] == '.')
+                {
+                    return true;
+                }
+                else
+                    return false;
             }
 
         }
