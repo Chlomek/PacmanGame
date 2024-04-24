@@ -161,6 +161,7 @@ namespace PacmanGame
             Random rnd = new Random();
             int score = 0;
             Direction? pacManDirection = default;
+            Direction? pacManMovingDirection = default;
             int pacManFrame = 0;
             const int framesToHorizontal = 6;
             const int framesToVertical = 6;
@@ -401,6 +402,62 @@ namespace PacmanGame
                 }
             }
 
+            bool AbleToMovePacMan()
+            {
+                switch (pacManDirection)
+                {
+                    case Direction.Up:
+                        if (GhostWalls[pacManPosition.X, pacManPosition.Y - 1] == ' ')
+                        {
+                            return true;
+
+                        }
+                        else if (GhostWalls[pacManPosition.X, pacManPosition.Y - 1] == '█')
+                        {
+                            pacManDirection = pacManMovingDirection; 
+                            return false;
+
+                        }
+                        else
+                        {
+                            return false;
+
+                        }
+                        break;
+                    case Direction.Down:
+                        if (GhostWalls[pacManPosition.X, pacManPosition.Y + 1] == ' ')
+                        {
+                            return true;
+
+                        }
+                        else if (GhostWalls[pacManPosition.X, pacManPosition.Y + 1] == '█')
+                        {
+                            pacManDirection = pacManMovingDirection; 
+                            return false;
+
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                        break;
+                    case Direction.Left:
+                        if (GhostWalls[pacManPosition.X - 1, pacManPosition.Y] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    case Direction.Right:
+                        if (GhostWalls[pacManPosition.X + 1, pacManPosition.Y] == ' ')
+                            return true;
+                        else
+                            return false;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+
             void UpdatePacMan()
             {
                 if (pacManDirection.HasValue)
@@ -408,8 +465,9 @@ namespace PacmanGame
                     if ((pacManDirection == Direction.Left || pacManDirection == Direction.Right) && pacManFrame >= framesToHorizontal ||
                              (pacManDirection == Direction.Up || pacManDirection == Direction.Down) && pacManFrame >= framesToVertical)
                     {
-                        if (AbleToMove(pacManPosition.X, pacManPosition.Y, pacManDirection.Value, GhostWalls) == true)
+                        if(AbleToMovePacMan())
                         {
+                            pacManMovingDirection = pacManDirection;
                             pacManFrame = 0;
                             Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
                             Console.Write(' ');
@@ -443,6 +501,38 @@ namespace PacmanGame
                                 score += 1;
                             }
                         }
+                        else if(pacManMovingDirection.HasValue)
+                        {
+                            pacManDirection = pacManMovingDirection;
+                            if (AbleToMovePacMan())
+                            {
+                                pacManFrame = 0;
+                                Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                                Console.Write(' ');
+                                if (pacManDirection == Direction.Left)
+                                {
+                                    pacManPosition.X--;
+                                }
+                                else if (pacManDirection == Direction.Right)
+                                {
+                                    pacManPosition.X++;
+                                }
+                                if (pacManPosition.X <= 0)
+                                {
+                                    pacManPosition.X = 40;
+                                }
+                                else if (pacManPosition.X >= 40)
+                                {
+                                    pacManPosition.X = 0;
+                                }
+                                if (dotEaten() == true)
+                                {
+                                    countDots[pacManPosition.X, pacManPosition.Y] = ' ';
+                                    dotsCollected += 1;
+                                    score += 1;
+                                }
+                            }
+                        }
                         else
                         {
                             pacManDirection = null;
@@ -458,10 +548,19 @@ namespace PacmanGame
             void UpdateGhost()
             {
                 Console.SetCursorPosition(a.Position.X, a.Position.Y);
-                if (countDots[a.Position.X, a.Position.Y] != ' ')
+                if (countDots[a.Position.X, a.Position.Y] == '.')
                 {
                     Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Write(countDots[a.Position.X, a.Position.Y]);
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+                else if (countDots[a.Position.X, a.Position.Y] == '+')
+                {
+                    Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write(countDots[a.Position.X, a.Position.Y]);
+                    Console.ForegroundColor = ConsoleColor.White;
                 }
                 else 
                 {
