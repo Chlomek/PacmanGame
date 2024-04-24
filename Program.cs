@@ -207,7 +207,7 @@ namespace PacmanGame
 
             while (true)
             {
-                if (dotsCollected >= 168)
+                if (dotsCollected > 168)
                 {
                     dotsCollected = 0;
                     countDotsCall();
