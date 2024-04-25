@@ -163,8 +163,9 @@ namespace PacmanGame
             Direction? pacManDirection = default;
             Direction? pacManMovingDirection = default;
             int pacManFrame = 0;
-            const int framesToHorizontal = 6;
-            const int framesToVertical = 6;
+            const int framesToHorizontal = 4;
+            const int framesToVertical = 4;
+            int GhostWeakTime = 20;
             (int X, int Y) pacManPosition;
 
             char[,] GhostWalls = new char[42, 42];
@@ -193,14 +194,43 @@ namespace PacmanGame
             Ghost c = new Ghost();
             Ghost d = new Ghost();
 
-            a.Color = ConsoleColor.Red;
-            a.StartingPosition = (20, 10);
-            a.Position = a.StartingPosition;
-            a.Start = 3;
-            a.UpdateFrame = -30;
-            a.FramesToUpdate = 8;
+            int pacManLives = 3;
+            int SetGhostWeakTime = 1000;
+            int pacManSpeedBonus = 0;
+
+            void ResetGhosts()
+            {
+                a.Color = ConsoleColor.Red;
+                a.StartingPosition = (20, 10);
+                a.Position = a.StartingPosition;
+                a.Start = 3;
+                a.UpdateFrame = -30;
+                a.FramesToUpdate = 5;
+
+                b.Color = ConsoleColor.Yellow;
+                b.StartingPosition = (20, 10);
+                b.Position = b.StartingPosition;
+                b.Start = 3;
+                b.UpdateFrame = -90;
+                b.FramesToUpdate = 5;
+
+                c.Color = ConsoleColor.Cyan;
+                c.StartingPosition = (20, 10);
+                c.Position = c.StartingPosition;
+                c.Start = 3;
+                c.UpdateFrame = -150;
+                c.FramesToUpdate = 8;
+
+                d.Color = ConsoleColor.Magenta;
+                d.StartingPosition = (20, 10);
+                d.Position = d.StartingPosition;
+                d.Start = 3;
+                d.UpdateFrame = -210;
+                d.FramesToUpdate = 8;
+            }
 
             pacManPosition = (20, 13);
+            ResetGhosts();
             countDotsCall();
             RenderWalls();
             RenderDots();
@@ -215,6 +245,8 @@ namespace PacmanGame
                     RenderWalls();
                     RenderDots();
                     pacManPosition = (20, 13);
+                    ResetGhosts();
+                    pacManDirection = null;
                     FirstDirectionInput();
                 }
 
@@ -223,8 +255,17 @@ namespace PacmanGame
                 HandleInput();
                 UpdatePacMan();
                 RenderPacMan();
-                UpdateGhost();
-                RenderGhost();
+
+                UpdateGhost(a);
+                UpdateGhost(b);
+                UpdateGhost(c);
+                UpdateGhost(d);
+
+                RenderGhost(a);
+                RenderGhost(b);
+                RenderGhost(c);
+                RenderGhost(d);
+
 
 
                 Debug();
@@ -235,8 +276,8 @@ namespace PacmanGame
                 ConsoleKey key = Console.ReadKey(true).Key;
                 switch (key)
                 {
-                    case ConsoleKey.LeftArrow: pacManDirection = Direction.Left; break;
-                    case ConsoleKey.RightArrow: pacManDirection = Direction.Right; break;
+                    case ConsoleKey.LeftArrow: pacManMovingDirection = Direction.Left; break;
+                    case ConsoleKey.RightArrow: pacManMovingDirection = Direction.Right; break;
                     default: goto GetInput;
                 }
                 return false;
@@ -276,7 +317,7 @@ namespace PacmanGame
                 Console.ForegroundColor = ConsoleColor.White;
             }
 
-            bool AbleToMove(int xc, int yc, Direction direction, char[,] Walls)
+            bool AbleToMove(int xc, int yc, Direction? direction, char[,] Walls)
             {
                 switch (direction)
                 {
@@ -285,25 +326,21 @@ namespace PacmanGame
                             return true;
                         else
                             return false;
-                        break;
                     case Direction.Down:
                         if (Walls[xc, yc + 1] == ' ')
                             return true;
                         else
                             return false;
-                        break;
                     case Direction.Left:
                         if (Walls[xc - 1, yc] == ' ')
                             return true;
                         else
                             return false;
-                        break;
                     case Direction.Right:
                         if (Walls[xc + 1, yc] == ' ')
                             return true;
                         else
                             return false;
-                        break;
                     default:
                         return false;
                 }
@@ -311,55 +348,44 @@ namespace PacmanGame
 
             bool AbleToMovePacMan()
             {
-                switch (pacManDirection)
+                switch (pacManMovingDirection)
                 {
                     case Direction.Up:
                         if (GhostWalls[pacManPosition.X, pacManPosition.Y - 1] == ' ')
                         {
+                            pacManMovingDirection = Direction.Up;
                             return true;
-
-                        }
-                        else if (GhostWalls[pacManPosition.X, pacManPosition.Y - 1] == '█')
-                        {
-                            pacManDirection = pacManMovingDirection;
-                            return false;
-
                         }
                         else
-                        {
                             return false;
 
-                        }
-                        break;
                     case Direction.Down:
                         if (GhostWalls[pacManPosition.X, pacManPosition.Y + 1] == ' ')
                         {
+                            pacManMovingDirection = Direction.Down;
                             return true;
-
-                        }
-                        else if (GhostWalls[pacManPosition.X, pacManPosition.Y + 1] == '█')
-                        {
-                            pacManDirection = pacManMovingDirection;
-                            return false;
-
                         }
                         else
-                        {
                             return false;
-                        }
-                        break;
+
                     case Direction.Left:
                         if (GhostWalls[pacManPosition.X - 1, pacManPosition.Y] == ' ')
+                        {
+                            pacManMovingDirection = Direction.Left;
                             return true;
+                        }
                         else
                             return false;
-                        break;
+
                     case Direction.Right:
                         if (GhostWalls[pacManPosition.X + 1, pacManPosition.Y] == ' ')
+                        {
+                            pacManMovingDirection = Direction.Right;
                             return true;
+                        }
                         else
                             return false;
-                        break;
+
                     default:
                         return false;
                 }
@@ -367,106 +393,111 @@ namespace PacmanGame
 
             void UpdatePacMan()
             {
-                if (pacManDirection.HasValue)
+                if ((pacManMovingDirection == Direction.Left || pacManMovingDirection == Direction.Right) && pacManFrame >= framesToHorizontal - pacManSpeedBonus ||
+                         (pacManMovingDirection == Direction.Up || pacManMovingDirection == Direction.Down) && pacManFrame >= framesToVertical - pacManSpeedBonus)
                 {
-                    if ((pacManDirection == Direction.Left || pacManDirection == Direction.Right) && pacManFrame >= framesToHorizontal ||
-                             (pacManDirection == Direction.Up || pacManDirection == Direction.Down) && pacManFrame >= framesToVertical)
+                    if (GhostWeakTime == 0)
                     {
-                        if (AbleToMovePacMan())
+                        pacManSpeedBonus = 0;
+                    }
+                    if (AbleToMove(pacManPosition.X, pacManPosition.Y, pacManDirection, GhostWalls))
+                    {
+                        pacManFrame = 0;
+                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                        Console.Write(' ');
+                        switch (pacManDirection)
                         {
-                            pacManMovingDirection = pacManDirection;
-                            pacManFrame = 0;
-                            Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                            Console.Write(' ');
-                            switch (pacManDirection)
-                            {
-                                case Direction.Up:
-                                    pacManPosition.Y--;
-                                    break;
-                                case Direction.Down:
-                                    pacManPosition.Y++;
-                                    break;
-                                case Direction.Left:
-                                    pacManPosition.X--;
-                                    break;
-                                case Direction.Right:
-                                    pacManPosition.X++;
-                                    break;
-                            }
-                            if (pacManPosition.X <= 1)
-                            {
-                                pacManPosition.X = 39;
-                            }
-                            else if (pacManPosition.X >= 39)
-                            {
-                                pacManPosition.X = 1;
-                            }
-                            if (dotEaten() == true)
-                            {
-                                countDots[pacManPosition.X, pacManPosition.Y] = ' ';
-                                dotsCollected += 1;
-                                score += 1;
-                            }
+                            case Direction.Up:
+                                pacManPosition.Y--;
+                                pacManMovingDirection = Direction.Up;
+                                break;
+                            case Direction.Down:
+                                pacManPosition.Y++;
+                                pacManMovingDirection = Direction.Down;
+                                break;
+                            case Direction.Left:
+                                pacManPosition.X--;
+                                pacManMovingDirection = Direction.Left;
+                                break;
+                            case Direction.Right:
+                                pacManPosition.X++;
+                                pacManMovingDirection = Direction.Right;
+                                break;
                         }
-                        else if (pacManMovingDirection.HasValue)
+                        if (pacManPosition.X <= 1)
                         {
-                            pacManDirection = pacManMovingDirection;
-                            if (AbleToMovePacMan())
-                            {
-                                pacManFrame = 0;
-                                Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
-                                Console.Write(' ');
-                                if (pacManDirection == Direction.Left)
-                                {
-                                    pacManPosition.X--;
-                                }
-                                else if (pacManDirection == Direction.Right)
-                                {
-                                    pacManPosition.X++;
-                                }
-                                if (pacManPosition.X <= 0)
-                                {
-                                    pacManPosition.X = 40;
-                                }
-                                else if (pacManPosition.X >= 40)
-                                {
-                                    pacManPosition.X = 0;
-                                }
-                                if (dotEaten() == true)
-                                {
-                                    countDots[pacManPosition.X, pacManPosition.Y] = ' ';
-                                    dotsCollected += 1;
-                                    score += 1;
-                                }
-                            }
+                            pacManPosition.X = 39;
                         }
-                        else
+                        else if (pacManPosition.X >= 39)
                         {
-                            pacManDirection = null;
+                            pacManPosition.X = 1;
                         }
+                        if (dotEaten() == true)
+                        {
+                            countDots[pacManPosition.X, pacManPosition.Y] = ' ';
+                        }
+                    }
+                    else if (AbleToMove(pacManPosition.X, pacManPosition.Y, pacManMovingDirection, GhostWalls))
+                    {
+                        pacManFrame = 0;
+                        Console.SetCursorPosition(pacManPosition.X, pacManPosition.Y);
+                        Console.Write(' ');
+                        switch (pacManMovingDirection)
+                        {
+                            case Direction.Up:
+                                pacManPosition.Y--;
+                                break;
+                            case Direction.Down:
+                                pacManPosition.Y++;
+                                break;
+                            case Direction.Left:
+                                pacManPosition.X--;
+                                break;
+                            case Direction.Right:
+                                pacManPosition.X++;
+                                break;
+                        }
+                        if (pacManPosition.X <= 0)
+                        {
+                            pacManPosition.X = 39;
+                        }
+                        else if (pacManPosition.X >= 39)
+                        {
+                            pacManPosition.X = 0;
+                        }
+                        if (dotEaten() == true)
+                        {
+                            countDots[pacManPosition.X, pacManPosition.Y] = ' ';
+                        }
+
                     }
                     else
                     {
-                        pacManFrame++;
+                        pacManDirection = null;
                     }
+                }
+                else
+                {
+                    pacManFrame++;
                 }
             }
 
-            void UpdateGhost()
+            void UpdateGhost(Ghost ghost)
             {
-                Console.SetCursorPosition(a.Position.X, a.Position.Y);
-                if (countDots[a.Position.X, a.Position.Y] == '.')
+                Kill(ghost);
+                Console.SetCursorPosition(ghost.Position.X, ghost.Position.Y);
+                if (countDots[ghost.Position.X, ghost.Position.Y] == '.')
                 {
-                    Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                    Console.SetCursorPosition(ghost.Position.X, ghost.Position.Y);
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write(countDots[a.Position.X, a.Position.Y]);
+                    Console.Write(countDots[ghost.Position.X, ghost.Position.Y]);
                     Console.ForegroundColor = ConsoleColor.White;
                 }
-                else if (countDots[a.Position.X, a.Position.Y] == '+')
+                else if (countDots[ghost.Position.X, ghost.Position.Y] == '+')
                 {
-                    Console.SetCursorPosition(a.Position.X, a.Position.Y);
+                    Console.SetCursorPosition(ghost.Position.X, ghost.Position.Y);
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.Write(countDots[a.Position.X, a.Position.Y]);
+                    Console.Write(countDots[ghost.Position.X, ghost.Position.Y]);
                     Console.ForegroundColor = ConsoleColor.White;
                 }
                 else
@@ -474,122 +505,176 @@ namespace PacmanGame
                     Console.Write(" ");
                 }
 
-                if (a.Start > 1)
+                if (GhostWeakTime != 0)
+                    GhostWeakTime--;
+
+                if (ghost.Start > 1)
                 {
-                    if (a.UpdateFrame >= a.FramesToUpdate)
+                    if (ghost.UpdateFrame >= ghost.FramesToUpdate)
                     {
-                        switch (a.Start)
+                        switch (ghost.Start)
                         {
                             case 3:
-                                a.Position = (20, 9);
-                                a.Start--;
+                                ghost.Position = (20, 9);
+                                ghost.Start--;
                                 break;
                             case 2:
-                                a.Position = (20, 8);
-                                a.Start--;
+                                ghost.Position = (20, 8);
+                                ghost.Start--;
                                 break;
                         }
-                        a.UpdateFrame = 0;
+                        ghost.UpdateFrame = 0;
                     }
                     else
                     {
-                        a.UpdateFrame++;
+                        ghost.UpdateFrame++;
                     }
                 }
                 else
                 {
-                    if (a.UpdateFrame >= a.FramesToUpdate)
+                    if (ghost.UpdateFrame >= ghost.FramesToUpdate)
                     {
-                        a.UpdateFrame = 0;
+                        ghost.UpdateFrame = 0;
 
-                        bool up = AbleToMove(a.Position.X, a.Position.Y, Direction.Up, GhostWalls);
-                        bool down = AbleToMove(a.Position.X, a.Position.Y, Direction.Down, GhostWalls);
-                        bool left = AbleToMove(a.Position.X, a.Position.Y, Direction.Left, GhostWalls);
-                        bool right = AbleToMove(a.Position.X, a.Position.Y, Direction.Right, GhostWalls);
+                        bool up = AbleToMove(ghost.Position.X, ghost.Position.Y, Direction.Up, GhostWalls);
+                        bool down = AbleToMove(ghost.Position.X, ghost.Position.Y, Direction.Down, GhostWalls);
+                        bool left = AbleToMove(ghost.Position.X, ghost.Position.Y, Direction.Left, GhostWalls);
+                        bool right = AbleToMove(ghost.Position.X, ghost.Position.Y, Direction.Right, GhostWalls);
 
-                        if (a.Destination.HasValue)
+                        ghost.Destination = (pacManPosition.X, pacManPosition.Y);
+
+                        if (ghost.direction == Direction.Left && left == true && (up == false && down == false))
                         {
-                            a.Destination = (pacManPosition.X, pacManPosition.Y);
-                            if (a.Position.X == a.Destination.Value.X && a.Position.Y == a.Destination.Value.Y)
-                            {
-                                a.Destination = (pacManPosition.X, pacManPosition.Y);
-                            }
-                            else if (a.direction == Direction.Left && left == true && (up == false || down == false))
-                            {
-                                a.Position.X--;
-                            }
-                            else if (a.direction == Direction.Up && up == true && (right == false || left == false))
-                            {
-                                a.Position.Y--;
-                            }
-                            else if (a.direction == Direction.Right && right == true && (up == false || down == false))
-                            {
-                                a.Position.X++;
-                            }
-                           
-                            else if (a.direction == Direction.Down && down == true && (right == false || left == false))
-                            {
-                                a.Position.Y++;
-                            }
-                            else if (a.Position.X < a.Destination.Value.X && right == true && a.direction != Direction.Left)
-                            {
-                                a.Position.X++;
-                                a.direction = Direction.Right;
-                            }
-                            else if (a.Position.X > a.Destination.Value.X && left == true && a.direction != Direction.Right)
-                            {
-                                a.Position.X--;
-                                a.direction = Direction.Left;
-                            }
-                            else if (a.Position.Y < a.Destination.Value.Y && down == true && a.direction != Direction.Up)
-                            {
-                                a.Position.Y++;
-                                a.direction = Direction.Down;
-                            }
-                            else if (a.Position.Y > a.Destination.Value.Y && up == true && a.direction != Direction.Down)
-                            {
-                                a.Position.Y--;
-                                a.direction = Direction.Up;
-                            }
-                            else if (a.direction == Direction.Up && up == true)
-                            {
-                                a.Position.Y--;
-                            }
-                            else if (a.direction == Direction.Down && down == true)
-                            {
-                                a.Position.Y++;
-                            }
-                            else if (a.direction == Direction.Left && left == true)
-                            {
-                                a.Position.X--;
-                            }
-                            else if (a.direction == Direction.Right && right == true)
-                            {
-                                a.Position.X++;
-                            }
-                            else
-                            {
-                                a.direction = (Direction)rnd.Next(0, 4);
-                            }
+                            ghost.Position.X--;
+                        }
+                        else if (ghost.direction == Direction.Up && up == true && (right == false && left == false))
+                        {
+                            ghost.Position.Y--;
+                        }
+                        else if (ghost.direction == Direction.Right && right == true && (up == false && down == false))
+                        {
+                            ghost.Position.X++;
+                        }
+                        else if (ghost.direction == Direction.Down && down == true && (right == false && left == false))
+                        {
+                            ghost.Position.Y++;
+                        }
 
+                        else if (ghost.Position.X < ghost.Destination.Value.X && (ghost.Position.X - ghost.Destination.Value.X < ghost.Position.Y - ghost.Destination.Value.Y) && right == true && ghost.direction != Direction.Left)
+                        {
+                            ghost.Position.X++;
+                            ghost.direction = Direction.Right;
+                        }
+                        else if (ghost.Position.X > ghost.Destination.Value.X && (ghost.Position.X - ghost.Destination.Value.X < ghost.Position.Y - ghost.Destination.Value.Y) && left == true && ghost.direction != Direction.Right)
+                        {
+                            ghost.Position.X--;
+                            ghost.direction = Direction.Left;
+                        }
+                        else if (ghost.Position.Y < ghost.Destination.Value.Y && (ghost.Position.X - ghost.Destination.Value.X > ghost.Position.Y - ghost.Destination.Value.Y) && down == true && ghost.direction != Direction.Up)
+                        {
+                            ghost.Position.Y++;
+                            ghost.direction = Direction.Down;
+                        }
+                        else if (ghost.Position.Y > ghost.Destination.Value.Y && (ghost.Position.X - ghost.Destination.Value.X > ghost.Position.Y - ghost.Destination.Value.Y) && up == true && ghost.direction != Direction.Down)
+                        {
+                            ghost.Position.Y--;
+                            ghost.direction = Direction.Up;
+                        }
+
+                        else if (ghost.Position.X < ghost.Destination.Value.X && right == true && ghost.direction != Direction.Left)
+                        {
+                            ghost.Position.X++;
+                            ghost.direction = Direction.Right;
+                        }
+                        else if (ghost.Position.X > ghost.Destination.Value.X && left == true && ghost.direction != Direction.Right)
+                        {
+                            ghost.Position.X--;
+                            ghost.direction = Direction.Left;
+                        }
+                        else if (ghost.Position.Y < ghost.Destination.Value.Y && down == true && ghost.direction != Direction.Up)
+                        {
+                            ghost.Position.Y++;
+                            ghost.direction = Direction.Down;
+                        }
+                        else if (ghost.Position.Y > ghost.Destination.Value.Y && up == true && ghost.direction != Direction.Down)
+                        {
+                            ghost.Position.Y--;
+                            ghost.direction = Direction.Up;
+                        }
+                        else if (ghost.direction == Direction.Up && up == true)
+                        {
+                            ghost.Position.Y--;
+                        }
+                        else if (ghost.direction == Direction.Down && down == true)
+                        {
+                            ghost.Position.Y++;
+                        }
+                        else if (ghost.direction == Direction.Left && left == true)
+                        {
+                            ghost.Position.X--;
+                        }
+                        else if (ghost.direction == Direction.Right && right == true)
+                        {
+                            ghost.Position.X++;
                         }
                         else
                         {
-                            a.Destination = (pacManPosition.X, pacManPosition.Y);
+                            ghost.direction = (Direction)rnd.Next(0, 4);
                         }
+                        Kill(ghost);
                     }
                     else
                     {
-                        a.UpdateFrame++;
+                        ghost.UpdateFrame++;
                     }
                 }
             }
 
-            void RenderGhost()
+
+            void Kill(Ghost ghost)
             {
-                Console.SetCursorPosition(a.Position.X, a.Position.Y);
-                Console.ForegroundColor = a.Color;
-                Console.Write('A');
+                if (ghost.Position.X == pacManPosition.X && ghost.Position.Y == pacManPosition.Y && GhostWeakTime == 0)
+                {
+                    pacManLives--;
+                    if (pacManLives == 0)
+                    {
+                        Console.Clear();
+                        Console.SetCursorPosition(20, 20);
+                        Console.Write("Game Over");
+                        Console.ReadKey();
+                        Environment.Exit(0);
+                    }
+                    else
+                    {
+                        RenderWalls();
+                        RenderDots();
+                        pacManPosition = (20, 13);
+                        ResetGhosts();
+                        pacManDirection = null;
+                        FirstDirectionInput();
+                    }
+                }
+                else if (ghost.Position.X == pacManPosition.X && ghost.Position.Y == pacManPosition.Y && GhostWeakTime > 0)
+                {
+                    ghost.Position = ghost.StartingPosition;
+                    ghost.Start = 3;
+                    ghost.UpdateFrame = -100;
+                    score += 200;
+                }
+            }
+
+            void RenderGhost(Ghost ghost)
+            {
+                Console.SetCursorPosition(ghost.Position.X, ghost.Position.Y);
+                if (GhostWeakTime > 0)
+                {
+                    Console.ForegroundColor = ConsoleColor.Blue;
+                }
+                else
+                {
+                    Console.ForegroundColor = ghost.Color;
+                }
+                Console.Write('G');
                 Console.ForegroundColor = ConsoleColor.White;
             }
 
@@ -604,12 +689,30 @@ namespace PacmanGame
                 Console.Write(" score:" + score);
                 Console.SetCursorPosition(20, 24);
                 Console.Write(pacManDirection);
+                Console.SetCursorPosition(26, 24);
+                Console.Write("Lives: " + pacManLives + "   ");
+                Console.Write(GhostWeakTime);
 
                 //Ghost A
                 Console.SetCursorPosition(0, 25);
                 Console.Write("                                       ");
                 Console.SetCursorPosition(0, 25);
-                Console.Write(a.Destination);
+                Console.Write(a.Destination + "  " + a.direction);
+                //Ghost B
+                Console.SetCursorPosition(0, 26);
+                Console.Write("                                       ");
+                Console.SetCursorPosition(0, 26);
+                Console.Write(b.Destination + "  " + b.direction);
+                //Ghost C
+                Console.SetCursorPosition(0, 27);
+                Console.Write("                                       ");
+                Console.SetCursorPosition(0, 27);
+                Console.Write(c.Destination + "  " + c.direction);
+                //Ghost D
+                Console.SetCursorPosition(0, 28);
+                Console.Write("                                       ");
+                Console.SetCursorPosition(0, 28);
+                Console.Write(a.Destination + "  " + d.direction);
             }
 
             void RenderWalls()
@@ -694,6 +797,14 @@ namespace PacmanGame
             {
                 if (countDots[pacManPosition.X, pacManPosition.Y] == '.')
                 {
+                    dotsCollected++;
+                    score += 10;
+                    return true;
+                }
+                else if (countDots[pacManPosition.X, pacManPosition.Y] == '+')
+                {
+                    GhostWeakTime = SetGhostWeakTime;
+                    pacManSpeedBonus = 1;
                     return true;
                 }
                 else
@@ -706,3 +817,5 @@ namespace PacmanGame
         }
     }
 }
+
+
