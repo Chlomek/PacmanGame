@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.IO;
 
 namespace PacmanGame
 {
@@ -148,8 +149,8 @@ namespace PacmanGame
 "                                         ";
 
             Console.CursorVisible = false;
-            Console.SetWindowSize(46, 46);
-            Console.SetBufferSize(46, 46);
+            Console.SetWindowSize(42, 50);
+            Console.SetBufferSize(42, 50);
             Console.Title = "PacMan";
             Console.BackgroundColor = ConsoleColor.Black;
             Console.ForegroundColor = ConsoleColor.White;
@@ -229,9 +230,13 @@ namespace PacmanGame
                 d.FramesToUpdate = 8;
             }
 
+            string username = "Player";
+            Menu();
             pacManPosition = (20, 13);
             ResetGhosts();
             countDotsCall();
+
+            //Console.SetCursorPosition(0, 0);
             RenderWalls();
             RenderDots();
             FirstDirectionInput();
@@ -270,6 +275,7 @@ namespace PacmanGame
 
                 Debug();
             }
+
             bool FirstDirectionInput()
             {
             GetInput:
@@ -639,10 +645,16 @@ namespace PacmanGame
                     if (pacManLives == 0)
                     {
                         Console.Clear();
-                        Console.SetCursorPosition(20, 20);
+
+                        Console.SetWindowSize(30, 50);
+                        Console.SetBufferSize(30, 50);
+
+                        Console.Clear();
+                        Console.SetCursorPosition(0, 0);
+                        SaveToLeaderboard();
                         Console.Write("Game Over");
                         Console.ReadKey();
-                        Environment.Exit(0);
+                        Menu();
                     }
                     else
                     {
@@ -770,6 +782,7 @@ namespace PacmanGame
                     }
                     Console.WriteLine();
                 }
+                Console.SetCursorPosition(0, 0);
             }
 
             void countDotsCall()
@@ -814,6 +827,121 @@ namespace PacmanGame
 
             }
 
+            void Menu()
+            {
+                Console.SetWindowSize(20, 10);
+                Console.SetBufferSize(20, 10);
+
+                int selected = 0;
+                while (true)
+                {
+                    Console.SetCursorPosition(0, 0);
+                    Console.Write("Pacman                     ");
+                    Console.SetCursorPosition(0, 1);
+                    if (selected == 0)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("> Start                 ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Start                  ");
+                    }
+                    Console.SetCursorPosition(0, 2);
+                    if (selected == 1)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("> Leaderboard                 ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Leaderboard                ");
+                    }
+                    Console.SetCursorPosition(0, 3);
+                    if (selected == 2)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("> Exit                              ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Exit                         ");
+                    }
+                    ConsoleKey key = Console.ReadKey().Key;
+                    switch (key)
+                    {
+                        case ConsoleKey.UpArrow:
+                            if (selected > 0)
+                            {
+                                selected--;
+                            }
+                            break;
+                        case ConsoleKey.DownArrow:
+                            if (selected < 2)
+                            {
+                                selected++;
+                            }
+                            break;
+                        case ConsoleKey.Enter:
+                            switch (selected)
+                            {
+                                case 0:
+                                    Console.Clear();
+                                    selected = 0;
+                                    Console.SetWindowSize(42, 50);
+                                    Console.SetBufferSize(42, 50);
+                                    return;
+                                case 1:
+                                    Leaderboard();
+                                    selected = 0;
+                                    break;
+                                case 2:
+                                    Environment.Exit(0);
+                                    break;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            void Leaderboard()
+            {
+                Console.Clear();
+                int row = 1;
+                Console.WriteLine("Leaderboard");
+                Console.SetCursorPosition(0, 0);
+                foreach (string line in File.ReadAllLines("Leaderboard.txt"))
+                {
+                    if (line.Contains("-"))
+                    {
+                        Console.SetCursorPosition(0, row);
+                        Console.Write(line);
+                        row++;
+                        if (row > 10)
+                        {
+                            return;
+                        }
+                    }
+                }
+                Console.ReadKey();
+                Console.Clear();
+            }
+
+            void SaveToLeaderboard()
+            {
+                Console.SetCursorPosition(0, 0);
+                Console.Write("Enter your username: ");
+                username = Console.ReadLine();
+                using (StreamWriter writer = new StreamWriter("Leaderboard.txt"))
+                {
+                    writer.WriteLine(score + " - " + username);
+                }
+            }
         }
     }
 }
