@@ -35,19 +35,6 @@ namespace PacmanGame
         //    ║ . . . . . . . . . . . . . . . . . . . ║
         //    ╚═══════════════════════════════════════╝
 
-        public class PacMan
-        {
-
-        }
-
-
-
-
-        public class Walls
-        {
-
-        }
-
         class Ghost
         {
             public (int X, int Y) StartingPosition;
@@ -154,9 +141,6 @@ namespace PacmanGame
             Console.BackgroundColor = ConsoleColor.Black;
             Console.ForegroundColor = ConsoleColor.White;
             Console.Clear();
-
-            PacMan pacMan = new PacMan();
-            Walls walls = new Walls();
 
             Random rnd = new Random();
             int score = 0;
