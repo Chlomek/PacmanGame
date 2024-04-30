@@ -914,7 +914,7 @@ namespace PacmanGame
                         SaveToLeaderboard();
                         Console.Write("Game Over");
                         Console.ReadKey();
-                        Menu();
+                        Environment.Exit(0);
                     }
                     else
                     {
